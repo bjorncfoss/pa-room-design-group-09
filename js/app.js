@@ -1,206 +1,170 @@
-let pointsArray = [];
-let texCoordsArray = [];
+// On loading the page, run the init function
+window.onload = () => init();
 
-let gl;
-let ctm;
-let projMatrix;
-let modelViewMatrix;
-
-let program;
-
+// Global variables
 const angle = 0.02; // rotation in radians
+const colorObject = 0x3f51b5; // color
+let canvas, currentObject, renderer, scene, camera;
+const cameraPositionZ = 4; // camera's Z position
+let currentScale = 1; // current scale
+let scaleFactor = 0.1; // scale increase/decrease factor
+let minScale = 0.3; // minimum size
+let maxScale = 2.5; // maximum size
+let mouseX, mouseY; // mouse position
 
-// constants for rotating
-let xAxis = 0;
-let yAxis = 1;
-let zAxis = 2;
-let axis = xAxis;
+// Sets listeners for the object selector
+document.getElementById("object_selector").onchange = function () {
+    let object = document.getElementById("object_selector").value;
+    scene.remove(currentObject);
+    switch (object) {
+        case 'cube':
+            makeCube();
+            break;
+        case 'cone':
+            makeCone();
+            break;
+        case 'cylinder':
+            makeCylinder();
+            break;
+        case 'sphere':
+            makeSphere();
+            break;
+    }
+};
 
-//stuff to load the models
-var model_src = "modelos/tiger.obj";
-var model_texture = "modelos/tiger_texture.jpg";
-var model_data;
-
-window.onload = function () {
-    init();
+// Sets listeners for the mouse position
+document.getElementById("gl-canvas").onmousemove = function (event) {
+    mouseX = (event.x / canvas.width) * cameraPositionZ - cameraPositionZ / 2;
+    mouseY = -(event.y / canvas.height) * cameraPositionZ + cameraPositionZ / 2;
 }
 
-async function init() {
-
-    // *** Get canvas ***
-    const canvas = document.getElementById('gl-canvas');
-
-    /** @type {WebGLRenderingContext} */ // ONLY FOR VS CODE
-    gl = canvas.getContext('webgl') || canvas.getContext("experimental-webgl");
-    if (!gl) {
-        alert('WebGL not supported');
-        return;
+// Sets listeners for the mouse wheel
+document.getElementById("gl-canvas").onwheel = function (event) {
+    if (event.deltaY > 0) {
+        currentScale += scaleFactor;
+        if (currentScale > maxScale) {
+            currentScale = maxScale;
+        }
+    } else {
+        currentScale -= scaleFactor;
+        if (currentScale < minScale) {
+            currentScale = minScale;
+        }
     }
+}
 
-    var aspectRatio =  canvas.width / canvas.height;
+/**
+ * Initializes the WebGL application
+ */
+const init = () => {
 
-    //** Load the models */
-    const model_content =  await loadObjResource(model_src);
-    data =  parseOBJ(model_content);
-    pointsArray = data.position;
-    texCoordsArray = data.texcoord;
-    vertexNormals = data.normal;
+    // *** Get canvas
+    canvas = document.getElementById('gl-canvas');
 
-    normalize(pointsArray);// easier to visualize
+    // *** Create a render
+    // Render is the main object of three.js used to draw scenes to a canvas
+    renderer = new THREE.WebGLRenderer({canvas});
+    renderer.setClearColor(0xffffff);
 
-    // *** Set viewport ***
-    gl.viewport(0, 0, canvas.width, canvas.height)
+    // *** Create a scene
+    // Scene defines properties like the background, and defines the objects to be rendered
+    scene = new THREE.Scene();
 
-    // *** Set color to the canvas ***
-    gl.clearColor(1.0, 1.0, 1.0, 1.0)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.enable(gl.DEPTH_TEST);
+    // *** Computes the cube
+    makeCube();
 
-    // *** Initialize vertex and fragment shader ***
-    program = await initShaders(gl);
-    gl.useProgram(program);
+    // *** Create a camera
+    const fov = 75; // field of view
+    const near = 0.1;
+    const far = 5;
+    // Anything before or after this range will be clipped
+    const aspect = canvas.width / canvas.height;
+    camera = new THREE.PerspectiveCamera(fov, aspect, near, far); // mimics the way the human eye sees
+    camera.position.z = cameraPositionZ;
 
-    // *** Send position data to the GPU ***
-    let vBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pointsArray), gl.STATIC_DRAW);
-
-    // *** Define the form of the data ***
-    let vPosition = gl.getAttribLocation(program, "vPosition");
-    gl.enableVertexAttribArray(vPosition);
-    gl.vertexAttribPointer(vPosition, 3, gl.FLOAT, false, 0, 0);
-
-    // *** Send texture data to the GPU ***
-    let tBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoordsArray), gl.STATIC_DRAW);
-
-    // *** Define the form of the data ***
-    let vTexCoord = gl.getAttribLocation(program, "vTexCoord");
-    gl.enableVertexAttribArray(vTexCoord);
-    gl.vertexAttribPointer(vTexCoord, 3, gl.FLOAT, false, 0, 0);
-
-
-
-    //* * Send normal vector data to the GPU ***
-    var nBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
-    var vNormData = gl.getAttribLocation(program, "aNormal");
-    gl.vertexAttribPointer(vNormData, 3, gl.FLOAT, gl.TRUE, 0, 0);
-    gl.enableVertexAttribArray(vNormData);
-    
-    /*Lighthing information*/
-    amibientLightUniformLocation =  gl.getUniformLocation(program,'fambientLightIntensity');
-    sunlightIntensityUniformLocation =  gl.getUniformLocation(program,'sun.color');
-    sunlightDirectionUniformLocation =  gl.getUniformLocation(program,'sun.direction');
-
-
-    gl.uniform3f(amibientLightUniformLocation, 0.5,0.5,0.5);
-    gl.uniform3f(sunlightIntensityUniformLocation, 0.5,0.5,0.5);
-    gl.uniform3f(sunlightDirectionUniformLocation,1.0,-4.0,-2.0);
-
-    // *** Get a pointer for the model viewer
-    modelViewMatrix = gl.getUniformLocation(program, "modelViewMatrix");
-    ctm = mat4.create();
-
-    // Set the image for the texture
-    let image = new Image();
-    image.src = model_texture;
-    image.onload = function () {
-        configureTexture(image);
-    }
-
-    // *** Create the event listeners for the buttons
-    document.getElementById("rotateX").onclick = function () {
-        axis = xAxis;
-    };
-    document.getElementById("rotateY").onclick = function () {
-        axis = yAxis;
-    };
-    document.getElementById("rotateZ").onclick = function () {
-        axis = zAxis;
-    };
-
-    projMatUniformLocation = gl.getUniformLocation(program, 'projectionMatrix');
-
-    projMatrix = new Float32Array(16); // 4x4
-    mat4.identity(projMatrix);
-    mat4.lookAt(projMatrix,[0,0,-3],[0,0,0],[0,1,0]);
-    mat4.perspective(projMatrix,glMatrix.toRadian(60),aspectRatio,0.01,1000.0);
-
-    gl.uniformMatrix4fv( projMatUniformLocation, gl.FALSE, projMatrix);
-
-    // after the implementation of the prespective we need to ajust the position
-    // so that the we can see the object...
-    mat4.translate(ctm,ctm,[0,0,-2]);
-
-    // *** Render ***
+    // *** Render
     render();
 
 }
 
+/**
+ * Draws a cube with different colors on each face.
+ */
+const makeCube = () => {
+    const boxWidth = 1;
+    const boxHeight = 1;
+    const boxDepth = 1;
+    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth); // vertex data
+    const materials = [
+        new THREE.MeshBasicMaterial({color: 0xff0000}), // red
+        new THREE.MeshBasicMaterial({color: 0x00ff00}), // green
+        new THREE.MeshBasicMaterial({color: 0x0000ff}), // blue
+        new THREE.MeshBasicMaterial({color: 0xffff00}), // yellow
+        new THREE.MeshBasicMaterial({color: 0x00ffff}), // cyan
+        new THREE.MeshBasicMaterial({color: 0xff00ff})  // magenta
+    ];
+    const cube = new THREE.Mesh(geometry, materials); // mesh objects represent drawing a specific Geometry with a specific Material
+    currentObject = cube;
+    scene.add(cube);
+}
 
-function render() {
-    // Clear the canvas
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+/**
+ * Draws a cone with different characteristics.
+ */
+const makeCone = () => {
+    const coneRadius = 1;
+    const coneHeight = 2;
+    const coneRadialSegments = 20;
+    const geometry = new THREE.ConeGeometry(coneRadius, coneHeight, coneRadialSegments); // vertex data
+    const material = new THREE.MeshBasicMaterial({color: colorObject}); // represent the surface properties. Note: the basic material is *not* affected by lights
+    const cone = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
+    currentObject = cone
+    scene.add(cone);
+}
+
+/**
+ * Draws a cylinder with different characteristics.
+ */
+const makeCylinder = () => {
+    const cylinderRadiusTop = 1;
+    const cylinderRadiusBottom = 1;
+    const cylinderHeight = 2;
+    const cylinderRadialSegments = 20;
+    const geometry = new THREE.CylinderGeometry(cylinderRadiusTop, cylinderRadiusBottom, cylinderHeight, cylinderRadialSegments); // vertex data
+    const material = new THREE.MeshBasicMaterial({color: colorObject}); // represent the surface properties. Note: the basic material is *not* affected by lights
+    const cylinder = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
+    currentObject = cylinder
+    scene.add(cylinder);
+}
+
+/**
+ * Draws a sphere with different characteristics.
+ */
+const makeSphere = () => {
+    const sphereRadius = 1;
+    const geometry = new THREE.SphereGeometry(sphereRadius); // vertex data
+    const material = new THREE.MeshBasicMaterial({color: colorObject}); // represent the surface properties. Note: the basic material is *not* affected by lights
+    const sphere = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
+    currentObject = sphere
+    scene.add(sphere);
+}
+
+/**
+ * The render loop.
+ */
+const render = () => {
+    // Apply translation
+    currentObject.position.set(mouseX, mouseY);
     // Apply rotation
-    switch (axis) {
-        case xAxis:
-            mat4.rotateX(ctm, ctm, angle);
-            break;
-        case yAxis:
-            mat4.rotateY(ctm, ctm, angle);
-            break;
-        case zAxis:
-            mat4.rotateZ(ctm, ctm, angle);
-            break;
-        default:
-            return -1
-    }
-    // Transfer the information to the model viewer
-    gl.uniformMatrix4fv(modelViewMatrix, false, ctm);
-
-    // Draw the triangles
-    gl.drawArrays(gl.TRIANGLES, 0, pointsArray.length / 3);
-
+    currentObject.rotation.x += angle;
+    currentObject.rotation.y += angle;
+    // Apply scaling
+    currentObject.scale.set(currentScale, currentScale, currentScale);
+    // Draw the scene
+    renderer.render(scene, camera);
     // Make the new frame
     requestAnimationFrame(render);
 }
 
-function configureTexture(image) {
-    let texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
-    gl.generateMipmap(gl.TEXTURE_2D);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.uniform1i(gl.getUniformLocation(program, "texture"), 0);
-}
 
-function applyLighting(){
-    let amb_r = document.getElementById("ambient_r").value;
-    let amb_g = document.getElementById("ambient_g").value;
-    let amb_b = document.getElementById("ambient_b").value;
-
-    let sun_r = document.getElementById("sun_r").value;
-    let sun_g = document.getElementById("sun_g").value;
-    let sun_b = document.getElementById("sun_b").value;
-
-    let sun_x =  document.getElementById("sun_x").value;
-    let sun_y =  document.getElementById("sun_y").value;
-    let sun_z =  document.getElementById("sun_z").value;
-
-    gl.uniform3f(amibientLightUniformLocation,amb_r,amb_g,amb_b);
-    gl.uniform3f(sunlightIntensityUniformLocation,sun_r,sun_g,sun_b);
-    gl.uniform3f(sunlightDirectionUniformLocation,sun_x,sun_y,sun_z);    
-}
-
-function setupTranslation(){
-    let xTranslation = document.getElementById("X_translation").value;
-    let yTranslation = document.getElementById("Y_translation").value;
-    let zTranslation = document.getElementById("Z_translation").value;
-    mat4.translate(ctm, ctm, [xTranslation, yTranslation, zTranslation]);
-}
