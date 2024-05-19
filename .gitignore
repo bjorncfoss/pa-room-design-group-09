@@ -1,0 +1,39 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# IntelliJ IDEA project files
+.idea/
+*.iml
+
+# VS Code project files
+.vscode/
+
+# MacOS system files
+.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
+
+# Build directories
+dist/
+build/
+
+# Ignore dotenv files (if you're using dotenv)
+.env
+.env.local
+.env.*.local
+
+# Ignore any generated files (if applicable)
+*.generated.*
