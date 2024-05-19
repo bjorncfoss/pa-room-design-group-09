@@ -1,0 +1,44 @@
+body {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+}
+
+.canvas-container,
+.input-container {
+    border: 1px solid black;
+    margin-bottom: 20px;
+}
+
+.input-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.input-section {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.input-section:last-child {
+    margin-right: 0;
+}
+
+.input-section h2 {
+    margin-top: 0;
+}
+
+.form-control-inline {
+    display: inline-block;
+    width: auto;
+    margin-right: 5px;
+}
+
+.form-control-inline:last-child {
+    margin-right: 0;
+}
