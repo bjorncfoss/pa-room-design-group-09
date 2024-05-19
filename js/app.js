@@ -11,6 +11,7 @@ let scaleFactor = 0.1; // scale increase/decrease factor
 let minScale = 0.3; // minimum size
 let maxScale = 2.5; // maximum size
 let mouseX, mouseY; // mouse position
+let light;
 
 // Sets listeners for the object selector
 document.getElementById("object_selector").onchange = function () {
@@ -82,6 +83,9 @@ const init = () => {
     camera = new THREE.PerspectiveCamera(fov, aspect, near, far); // mimics the way the human eye sees
     camera.position.z = cameraPositionZ;
 
+    //Begin ambient light
+    addLight(0,0,0,0,0,0,200,200,50);
+
     // *** Render
     render();
 
@@ -148,6 +152,36 @@ const makeSphere = () => {
     const sphere = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
     currentObject = sphere
     scene.add(sphere);
+}
+document.getElementById("add_light").onclick = function (){
+    scene.remove(light);
+
+    let px= document.getElementById("light_x_position");
+    let py= document.getElementById("light_y_position");
+    let pz= document.getElementById("light_z_position");
+
+    let dx= document.getElementById("light_x_dir");
+    let dy= document.getElementById("light_y_dir");
+    let dz= document.getElementById("light_z_dir");
+
+    let r= document.getElementById("light_r");
+    let g= document.getElementById("light_g");
+    let b= document.getElementById("light_b");
+
+    if (px !== null && py !== null && pz !== null &&
+        dx !== null && dy !== null && dz !== null &&
+        r !== null && g !== null && b !== null) {
+        addLight(px, py, pz, dx, dy, dz, r, b, g);
+    } else {
+        console.error("One or more elements are null.");
+        //TODO:adicionar erro a dizer que um valor é null
+    }
+}
+
+function addLight(px,py,pz,dx,dy,dz,r,b,g){
+    var color = new THREE.Color(r / 255, g / 255, b / 255).getHex();
+
+    light=new THREE.AmbientLight(color,2);
 }
 
 /**
