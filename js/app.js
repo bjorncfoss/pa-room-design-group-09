@@ -15,46 +15,6 @@ let light;
 let animations=[];
 let objectArray=[];
 let objectId=0;
-// Sets listeners for the object selector
-document.getElementById("object_selector").onchange = function () {
-    let object = document.getElementById("object_selector").value;
-    scene.remove(currentObject);
-    switch (object) {
-        case 'cube':
-            makeCube();
-            break;
-        case 'cone':
-            makeCone();
-            break;
-        case 'cylinder':
-            makeCylinder();
-            break;
-        case 'sphere':
-            makeSphere();
-            break;
-    }
-};
-
-// Sets listeners for the mouse position
-document.getElementById("gl-canvas").onmousemove = function (event) {
-    mouseX = (event.x / canvas.width) * cameraPositionZ - cameraPositionZ / 2;
-    mouseY = -(event.y / canvas.height) * cameraPositionZ + cameraPositionZ / 2;
-}
-
-// Sets listeners for the mouse wheel
-document.getElementById("gl-canvas").onwheel = function (event) {
-    if (event.deltaY > 0) {
-        currentScale += scaleFactor;
-        if (currentScale > maxScale) {
-            currentScale = maxScale;
-        }
-    } else {
-        currentScale -= scaleFactor;
-        if (currentScale < minScale) {
-            currentScale = minScale;
-        }
-    }
-}
 
 /**
  * Initializes the WebGL application
