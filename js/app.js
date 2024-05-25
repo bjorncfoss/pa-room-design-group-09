@@ -15,6 +15,12 @@ let light;
 let animations=[];
 let objectArray=[];
 let objectId=0;
+let manipulate= false;
+const keys={};
+
+window.addEventListener('keydown', handleKeyDown);
+window.addEventListener('keyup', handleKeyUp);
+
 
 /**
  * Initializes the WebGL application
@@ -41,7 +47,7 @@ const init = () => {
     const aspect = canvas.width / canvas.height;
     camera = new THREE.PerspectiveCamera(fov, aspect, near, far); // mimics the way the human eye sees
     camera.position.z = cameraPositionZ;
-
+    camera.lookAt(0, 0, 0);
     //Begin ambient light
     addLight(0,0,0,0,0,0,200,200,50);
     animate();
@@ -105,6 +111,14 @@ const makeCube = (h,w,d,colorType) => {
     });*/
 }
 
+const addTexture = (cube) => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load("texture.png", (texture) => {
+        cube.material.map = texture;
+        cube.material.color.set(0xffffff);
+        cube.material.needsUpdate = true; // Atualiza o material
+    });
+}
 const makePyramid = (h,w,colorType) => {
     //const pyramidBaseRadius = 1;
     //const pyramidHeight = 2;
@@ -163,8 +177,15 @@ document.getElementById("add_primitive").onclick = function (){
 
     let id = document.getElementById("primitive-id");
     id.textContent= objectId;
-    objectId+=1;
 
+
+    let selectElement = document.getElementById("manipulate-objects");
+    let newOption = document.createElement("option");
+    newOption.value= objectId;
+    newOption.text= objectId;
+    selectElement.add(newOption);
+
+    objectId+=1;
     console.log(document.getElementById("primitive-color"));
     if (type != null && h != null && w != null && d != null) {
         createObject(type.value, h.value, w.value, d.value, colorType.value);
@@ -172,8 +193,74 @@ document.getElementById("add_primitive").onclick = function (){
         console.error("One or more elements are null.");
         //TODO:erro em html de valor nulo
     }
+    console.log(objectArray);
 }
 
+document.getElementById("manipulate").onclick = function (){
+    manipulate=!manipulate;
+}
+
+function verifyManipulate(){
+    if(manipulate==true){
+        let width = document.getElementById("primitive_width");
+        let height = document.getElementById("primitive_height");
+        let depth = document.getElementById("primitive_depth");
+        let option = document.getElementById("manipulate-objects");
+        let optionSelected= option.value;
+        if (keys['KeyL']){
+            let options = option.options;
+            scene.remove(objectArray[optionSelected]);
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === optionSelected) {
+                    option.remove(i);
+                    break;
+                }
+            }
+            delete objectArray[optionSelected];
+            manipulate=!manipulate;
+        }
+        if(keys['ArrowRight']){
+            objectArray[optionSelected].position.x+=0.05;
+        }
+        if(keys['ArrowLeft']){
+            objectArray[optionSelected].position.x-=0.05;
+        }
+        if(keys['ArrowUp']){
+            objectArray[optionSelected].position.z+=0.05;
+        }
+        if(keys['ArrowDown']){
+            objectArray[optionSelected].position.z-=0.05;
+        }
+        if(keys['PageUp']){
+            objectArray[optionSelected].position.y+=0.05;
+        }
+        if(keys['PageDown']){
+            objectArray[optionSelected].position.y-=0.05;
+        }
+        if(keys['KeyT']){
+            addTexture(objectArray[optionSelected]);
+        }
+        if(keys['KeyR']){
+            if(keys['KeyH']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x+0.05,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyW']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x, objectArray[optionSelected].scale.y+0.05,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyD']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z+0.05);
+            }
+        }
+    }
+}
+function handleKeyDown(event) {
+    keys[event.code] = true;
+}
+
+
+function handleKeyUp(event) {
+    keys[event.code] = false;
+}
 
 function createObject(type,h,w,d,colorType){
     switch (type) {
@@ -190,11 +277,7 @@ function createObject(type,h,w,d,colorType){
  * The render loop.
  */
 const render = () => {
-    // Apply translation
-
-    // Apply rotation
-
-    // Apply scaling
+    verifyManipulate();
     // Draw the scene
     animate();
     renderer.render(scene, camera);
