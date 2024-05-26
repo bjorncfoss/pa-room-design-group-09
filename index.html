@@ -30,10 +30,40 @@
             <label for="primitive_depth">Depth</label>
             <input type="number" id="primitive_depth" class="form-control">
          </div>
+         <div class="form-input">
+            <label for="primitive_pos_x">X</label>
+            <input type="number" id="primitive_pos_x" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_pos_y">Y</label>
+            <input type="number" id="primitive_pos_y" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_pos_z">Z</label>
+            <input type="number" id="primitive_pos_z" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_rot_x">Rx</label>
+            <input type="number" id="primitive_rot_x" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_rot_y">Ry</label>
+            <input type="number" id="primitive_rot_y" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_rot_z">Rz</label>
+            <input type="number" id="primitive_rot_z" class="form-control">
+         </div>
       </div>
-      <div class="primitive-color-form">
+      <div class="primitive-filling-form">
+         <select id="filling-selector">
+            <option value="color">Color</option>
+            <option value="texture">Texture</option>
+         </select>
+         <br>
          <label for="primitive-color">Color:</label>
          <input type="color" id="primitive-color" name="primitive_color" value="#ff0000"><br><br>
+         <input type="file" id="primitive-texture" name="texture" accept="image/png" />
       </div>
       <button id="add_primitive" class="btn btn-success">Add Primitive</button>
       <label id="primitive-id"></label>

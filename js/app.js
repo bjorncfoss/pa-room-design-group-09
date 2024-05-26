@@ -50,10 +50,11 @@ const init = () => {
     camera.lookAt(0, 0, 0);
     //Begin ambient light
     addLight(0,0,0,0,0,0,200,200,50);
-    animate();
+
     makeBorders();
     // *** Render
     render();
+    animate();
 }
 
 function makeBorders (){
@@ -93,46 +94,59 @@ function makeBorders (){
 /**
  * Draws a cube with different colors on each face.
  */
-const makeCube = (h,w,d,colorType) => {
+const makeCube = (h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz) => {
     const geometry = new THREE.BoxGeometry(w, h, d); // vertex data
-    const material = new THREE.MeshBasicMaterial({color: colorType});
+    const material = new THREE.MeshBasicMaterial({color: color});
     const cube = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
-
     currentObject = cube;
     /*cube.rotation.x = 1;
     cube.rotation.y = 1;
     cube.rotation.z = 1;*/
     objectArray.push(cube);
+    cube.position.set(px,py,pz);
+    const animateCube = () => {
+        cube.rotation.x += (rx*0.01);
+        cube.rotation.y += (ry*0.01);
+        cube.rotation.z += (rz*0.01);
+    };
     scene.add(cube);
-    /*animations.push(() => {
-        cube.rotation.x += angle;
-        cube.rotation.y += angle;
-        cube.rotation.z += angle;
-    });*/
+    animations.push(animateCube);
+    if (colorType==='texture'){
+        addTexture(cube,texture);
+    }
 }
 
-const addTexture = (cube) => {
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load("texture.png", (texture) => {
-        cube.material.map = texture;
-        cube.material.color.set(0xffffff);
-        cube.material.needsUpdate = true; // Atualiza o material
-    });
-}
-const makePyramid = (h,w,colorType) => {
-    //const pyramidBaseRadius = 1;
-    //const pyramidHeight = 2;
+const makePyramid = (h,w,colorType,color,texture,px,py,pz,rx,ry,rz) => {
     console.log(h);
     console.log(w);
     const pyramidSegments = 4; // A pyramid with a square base
 
     // CylinderGeometry with top radius 0 to create a pyramid shape
     const geometry = new THREE.CylinderGeometry(0, w, h, pyramidSegments);
-    const material = new THREE.MeshBasicMaterial({color: colorType}); // represent the surface properties. Note: the basic material is *not* affected by lights
+    const material = new THREE.MeshBasicMaterial({color: color}); // represent the surface properties. Note: the basic material is *not* affected by lights
     const pyramid = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
     currentObject = pyramid;
     objectArray.push(pyramid);
+    pyramid.position.set(px,py,pz);
+    const animatePyramid = () => {
+        pyramid.rotation.x += (rx*0.01);
+        pyramid.rotation.y += (ry*0.01);
+        pyramid.rotation.z += (rz*0.01);
+    };
     scene.add(pyramid);
+    animations.push(animatePyramid);
+    if (colorType==='texture'){
+        addTexture(pyramid,texture);
+    }
+}
+
+const addTexture = (cube,path) => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(path, (texture) => {
+        cube.material.map = texture;
+        cube.material.color.set(0xffffff);
+        cube.material.needsUpdate = true; // Atualiza o material
+    });
 }
 
 document.getElementById("add_light").onclick = function (){
@@ -173,12 +187,22 @@ document.getElementById("add_primitive").onclick = function (){
     let w = document.getElementById("primitive_width");
     let d = document.getElementById("primitive_depth");
 
-    let colorType = document.getElementById("primitive-color");
+    let px = document.getElementById("primitive_pos_x");
+    let py = document.getElementById("primitive_pos_y");
+    let pz = document.getElementById("primitive_pos_z");
 
+    let rx = document.getElementById("primitive_rot_x");
+    let ry = document.getElementById("primitive_rot_y");
+    let rz = document.getElementById("primitive_rot_z");
+
+    let colorType = document.getElementById("filling-selector");
+    let color = document.getElementById("primitive-color");
+    let textureInput = document.getElementById("primitive-texture");
     let id = document.getElementById("primitive-id");
+    console.log(colorType.value);
+    let textureName= textureInput.name+".png";
+
     id.textContent= objectId;
-
-
     let selectElement = document.getElementById("manipulate-objects");
     let newOption = document.createElement("option");
     newOption.value= objectId;
@@ -188,7 +212,7 @@ document.getElementById("add_primitive").onclick = function (){
     objectId+=1;
     console.log(document.getElementById("primitive-color"));
     if (type != null && h != null && w != null && d != null) {
-        createObject(type.value, h.value, w.value, d.value, colorType.value);
+        createObject(type.value, h.value, w.value, d.value, colorType.value,color.value,textureName,px.value,py.value,pz.value,rx.value,ry.value,rz.value);
     } else {
         console.error("One or more elements are null.");
         //TODO:erro em html de valor nulo
@@ -240,15 +264,27 @@ function verifyManipulate(){
         if(keys['KeyT']){
             addTexture(objectArray[optionSelected]);
         }
-        if(keys['KeyR']){
+        //TODO:Add verification to avoid negative numbers and huge objects
+        if(keys['KeyI']){
             if(keys['KeyH']){
                 objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x+0.05,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z);
             }
-            if(keys['KeyW']){
+            if(keys['KeyJ']){
                 objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x, objectArray[optionSelected].scale.y+0.05,objectArray[optionSelected].scale.z);
             }
-            if(keys['KeyD']){
+            if(keys['KeyK']){
                 objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z+0.05);
+            }
+        }
+        if(keys['KeyO']){
+            if(keys['KeyH']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x-0.05,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyJ']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x, objectArray[optionSelected].scale.y-0.05,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyK']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z-0.05);
             }
         }
     }
@@ -262,13 +298,13 @@ function handleKeyUp(event) {
     keys[event.code] = false;
 }
 
-function createObject(type,h,w,d,colorType){
+function createObject(type,h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz){
     switch (type) {
         case 'cube':
-            makeCube(h,w,d,colorType);
+            makeCube(h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz);
             break;
         case 'pyramid':
-            makePyramid(h,w,colorType);
+            makePyramid(h,w,colorType,color,texture,px,py,pz,rx,ry,rz);
             break;
     }
 }
@@ -279,14 +315,16 @@ function createObject(type,h,w,d,colorType){
 const render = () => {
     verifyManipulate();
     // Draw the scene
-    animate();
+
     renderer.render(scene, camera);
     // Make the new frame
     requestAnimationFrame(render);
 }
 
-const animate = () => {
+function animate(){
+    requestAnimationFrame(animate);
     for (const animation of animations) {
         animation();
     }
+    renderer.render(scene, camera);
 }
