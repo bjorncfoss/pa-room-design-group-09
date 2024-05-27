@@ -24,7 +24,7 @@ const mouseSensitivity = 0.7;
 let mouseX=0; 
 let mouseY=0; // mouse position
 const colorLight = 0xffff00; // light color
-const lightIntensity = 100; // light intensity
+const lightIntensity = 2; // light intensity
 let light;
 let animations=[];
 let objectArray=[];
@@ -114,9 +114,6 @@ const makeCube = (h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz) => {
     //const material = new THREE.MeshBasicMaterial({color: color});
     const cube = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
     currentObject = cube;
-    /*cube.rotation.x = 1;
-    cube.rotation.y = 1;
-    cube.rotation.z = 1;*/
     objectArray.push(cube);
     cube.position.set(px,py,pz);
     const animateCube = () => {
@@ -277,7 +274,6 @@ document.getElementById("add-model").onclick = function () {
     objectId+=1;
 
     let obj = document.getElementById("model-file").files[0].name.replace('.obj', '');
-    //addModel(obj,px.value,py.value,pz.value,rx.value,ry.value,rz.value);
     addModel(px.value,py.value,pz.value, obj,rx.value,ry.value,rz.value);
 }
 
@@ -337,8 +333,6 @@ function verifyManipulate(){
         let depth = document.getElementById("primitive_depth");
         let option = document.getElementById("manipulate-objects");
         let optionSelected= option.value;
-        let texture = document.getElementById("primitive-texture");
-        let textureName= texture.name+".png";
         if (keys['KeyL']){
             let options = option.options;
             scene.remove(objectArray[optionSelected]);
@@ -372,7 +366,8 @@ function verifyManipulate(){
         if(keys['KeyT']){
             //let texture = document.getElementById("primitive-texture");
             //let textureName= texture.name+".png";
-            addTexture(objectArray[optionSelected],textureName);
+            addTexture(objectArray[optionSelected],document.getElementById("primitive-texture").name+".png");
+            //addTexture(objectArray[optionSelected],"texture_1.png");
         }
         //TODO:Add verification to avoid negative numbers and huge objects
         if(keys['KeyI']){
