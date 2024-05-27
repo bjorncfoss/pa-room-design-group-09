@@ -1,11 +1,13 @@
 import * as THREE from 'three';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { TextureLoader } from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 
 // On loading the page, run the init function
-window.onload = () => init();
-
+//window.onload = () => init();
+window.onload = () => {
+    init()
+    document.addEventListener('mousemove', handleMouseMove);
+};
 // Global variables
 const angle = 0.02; // rotation in radians
 const colorObject = 0x3f51b5; // color
@@ -16,13 +18,18 @@ let currentScale = 1; // current scale
 let scaleFactor = 0.1; // scale increase/decrease factor
 let minScale = 0.3; // minimum size
 let maxScale = 2.5; // maximum size
-let mouseX, mouseY; // mouse position
+let prevMouseX=0;
+let prevMouseY=0;
+const mouseSensitivity = 0.7;
+let mouseX=0; 
+let mouseY=0; // mouse position
 const colorLight = 0xffff00; // light color
-const lightIntensity = 10; // light intensity
+const lightIntensity = 100; // light intensity
 let light;
 let animations=[];
 let objectArray=[];
 let objectId=0;
+
 let manipulate= false;
 const keys={};
 
@@ -58,7 +65,7 @@ const init = () => {
     camera.lookAt(0, 0, 0);
     //Begin ambient light
     //addLight(0,0,0,0,0,0,200,200,50);
-    makeLight("ambient");
+    //makeLight("ambient",0,0,0,0,0,0,0);
     makeBorders();
     // *** Render
     render();
@@ -104,7 +111,8 @@ function makeBorders (){
  */
 const makeCube = (h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz) => {
     const geometry = new THREE.BoxGeometry(w, h, d); // vertex data
-    const material = new THREE.MeshBasicMaterial({color: color});
+    const material = new THREE.MeshPhongMaterial({color: color});
+    //const material = new THREE.MeshBasicMaterial({color: color});
     const cube = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
     currentObject = cube;
     /*cube.rotation.x = 1;
@@ -131,7 +139,8 @@ const makePyramid = (h,w,colorType,color,texture,px,py,pz,rx,ry,rz) => {
 
     // CylinderGeometry with top radius 0 to create a pyramid shape
     const geometry = new THREE.CylinderGeometry(0, w, h, pyramidSegments);
-    const material = new THREE.MeshBasicMaterial({color: color}); // represent the surface properties. Note: the basic material is *not* affected by lights
+    const material = new THREE.MeshPhongMaterial({color: color, emissive: 0xd95000, shininess: 35});
+    //const material = new THREE.MeshBasicMaterial({color: color}); // represent the surface properties. Note: the basic material is *not* affected by lights
     const pyramid = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
     currentObject = pyramid;
     objectArray.push(pyramid);
@@ -170,7 +179,7 @@ document.getElementById("add_light").onclick = function (){
 
     let color = document.getElementById("light-color");
 
-    makeLight("directional",px,py,pz,dx,dy,dz,color.value);
+    makeLight("directional",px.value,py.value,pz.value,dx.value,dy.value,dz.value,color.value);
     /*if (px !== null && py !== null && pz !== null &&
         dx !== null && dy !== null && dz !== null &&
         r !== null && g !== null && b !== null) {
@@ -192,19 +201,12 @@ const makeLight = (lightType,px,py,pz,dx,dy,dz,color) => {
             light = new THREE.DirectionalLight(color, lightIntensity);
             light.position.set(px, py, pz);
             light.target.position.set(dx, dy, dz);
-            scene.add(light.target);
+            scene.add(light);
             break;
-        default:
-            return -1;
     }
     scene.add(light);
 }
 
-function addLight(px,py,pz,dx,dy,dz,r,b,g){
-    var color = new THREE.Color(r / 255, g / 255, b / 255).getHex();
-
-    light=new THREE.AmbientLight(color,2);
-}
 
 document.getElementById("add_primitive").onclick = function (){
     let type = document.getElementById("object_selector");
@@ -264,15 +266,67 @@ document.getElementById("add-model").onclick = function () {
     let ry = document.getElementById("primitive_rot_y");
     let rz = document.getElementById("primitive_rot_z");
 
-    let obj = document.getElementById("model-file");
-    console.log(obj);
-    console.log(obj.value);
-    addModel(obj,px,py,pz,rx,ry,rz);
+    let id = document.getElementById("primitive-id");
+
+    id.textContent= objectId;
+    let selectElement = document.getElementById("manipulate-objects");
+    let newOption = document.createElement("option");
+    newOption.value= objectId;
+    newOption.text= objectId;
+    selectElement.add(newOption);
+
+    objectId+=1;
+
+    let obj = document.getElementById("model-file").files[0].name.replace('.obj', '');
+    //addModel(obj,px.value,py.value,pz.value,rx.value,ry.value,rz.value);
+    addModel(px.value,py.value,pz.value, obj,rx.value,ry.value,rz.value);
 }
 
-function addModel(obj, px, py, pz, rx, ry, rz){
+function addModel(x, y, z,obj,rx,ry,rz) {
     const textureLoader = new THREE.TextureLoader();
-    const objLoader = new THREE.OBJLoader();
+    let texture;
+    if (obj== "astronaut" || obj == "cat"){
+        texture = textureLoader.load('/modelos/'+obj+'.png');
+    }
+    else{
+        texture = textureLoader.load('/modelos/'+obj+'.jpg');
+    }
+
+    objLoader.load(
+        '/modelos/'+obj+'.obj',
+        function ( object ) {
+            object.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = texture;
+                }
+            });
+            object.scale.set(0.01, 0.01, 0.01);
+            object.position.set(x,y,z);
+            objectArray.push(object);
+            const animateObj = () => {
+                object.rotation.x += (rx*0.01);
+                object.rotation.y += (ry*0.01);
+                object.rotation.z += (rz*0.01);
+            };
+            scene.add( object );
+            animations.push(animateObj);
+        },
+        function ( xhr ) {
+    
+            console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    
+        },
+        function ( error ) {
+    
+            console.log( 'An error happened' );
+    
+        }
+    );
+}
+
+/*function addModel(obj, px, py, pz, rx, ry, rz){
+    const textureLoader = new THREE.TextureLoader();
+    //const objLoader = new THREE.OBJLoader();
     let texture;
     if(obj.value === 'astronaut' || obj.value === 'cat'){
         texture = textureLoader.load('/modelos/' + obj.value + '.png');
@@ -281,7 +335,7 @@ function addModel(obj, px, py, pz, rx, ry, rz){
         texture = textureLoader.load('/modelos/' + obj.value + '.jpg');
     }
 
-    objLoader.load('modelos/' + obj.value + '.obj', function (object) {
+    objLoader.load('/modelos/' + obj.value + '.obj', function (object) {
             object.traverse(function (child) {
                 if (child instanceof THREE.Mesh) {
                     child.material.map = texture;
@@ -305,15 +359,15 @@ function addModel(obj, px, py, pz, rx, ry, rz){
         function (error) {
             console.error('An error happened', error);
         });
-}
+}*/
 
 document.getElementById("manipulate").onclick = function (){
     manipulate=!manipulate;
+    let showManipulate= document.getElementById("manipulate-variable");
+    showManipulate.innerHTML = "manipulate: "+manipulate;
 }
 
 function verifyManipulate(){
-    let showManipulate= document.getElementById("manipulate-variable");
-    showManipulate.innerHTML = "manipulate: "+manipulate;
     if(manipulate==true){
         let width = document.getElementById("primitive_width");
         let height = document.getElementById("primitive_height");
@@ -322,7 +376,6 @@ function verifyManipulate(){
         let optionSelected= option.value;
         let texture = document.getElementById("primitive-texture");
         let textureName= texture.name+".png";
-
         if (keys['KeyL']){
             let options = option.options;
             scene.remove(objectArray[optionSelected]);
@@ -336,22 +389,22 @@ function verifyManipulate(){
             manipulate=!manipulate;
         }
         if(keys['ArrowRight']){
-            objectArray[optionSelected].position.x+=0.05;
+            objectArray[optionSelected].position.x = parseFloat(objectArray[optionSelected].position.x) + 0.05;
         }
         if(keys['ArrowLeft']){
-            objectArray[optionSelected].position.x-=0.05;
+            objectArray[optionSelected].position.x = parseFloat(objectArray[optionSelected].position.x) - 0.05;
         }
         if(keys['ArrowUp']){
-            objectArray[optionSelected].position.z+=0.05;
+            objectArray[optionSelected].position.z = parseFloat(objectArray[optionSelected].position.z) + 0.05;
         }
         if(keys['ArrowDown']){
-            objectArray[optionSelected].position.z-=0.05;
+            objectArray[optionSelected].position.z = parseFloat(objectArray[optionSelected].position.z) - 0.05;
         }
         if(keys['PageUp']){
-            objectArray[optionSelected].position.y+=0.05;
+            objectArray[optionSelected].position.y = parseFloat(objectArray[optionSelected].position.y) + 0.05;
         }
         if(keys['PageDown']){
-            objectArray[optionSelected].position.y-=0.05;
+            objectArray[optionSelected].position.y = parseFloat(objectArray[optionSelected].position.y) - 0.05;
         }
         if(keys['KeyT']){
             //let texture = document.getElementById("primitive-texture");
@@ -391,6 +444,14 @@ function handleKeyUp(event) {
     keys[event.code] = false;
 }
 
+function handleMouseMove(event) {
+    const { clientX, clientY } = event;
+    const { innerWidth, innerHeight } = window;
+
+    mouseX = (clientX / innerWidth) * 2 - 1;
+    mouseY = (clientY / innerHeight) * 2 - 1;
+}
+
 /**
  * The render loop.
  */
@@ -404,7 +465,39 @@ const render = () => {
 }
 
 function animate(){
-    requestAnimationFrame(animate);
+    requestAnimationFrame(animate);;
+    const speed = 0.1;
+  if (keys['KeyW']) {
+    camera.position.x -= Math.sin(camera.rotation.y) * speed;
+    camera.position.z -= Math.cos(camera.rotation.y) * speed;
+  }
+  if (keys['KeyD']) {
+    camera.position.x -= Math.sin(camera.rotation.y - Math.PI / 2) * speed;
+    camera.position.z -= Math.cos(camera.rotation.y - Math.PI / 2) * speed;
+  }
+  if (keys['KeyS']) {
+    camera.position.x += Math.sin(camera.rotation.y) * speed;
+    camera.position.z += Math.cos(camera.rotation.y) * speed;
+  }
+  if (keys['KeyA']) {
+    camera.position.x += Math.sin(camera.rotation.y - Math.PI / 2) * speed;
+    camera.position.z += Math.cos(camera.rotation.y - Math.PI / 2) * speed;
+  }
+
+  const mouseDeltaX = mouseX - prevMouseX;
+  const mouseDeltaY = mouseY - prevMouseY;
+
+  camera.rotation.y -= mouseDeltaX * mouseSensitivity;
+
+  const newRotationX = camera.rotation.x - mouseDeltaY * mouseSensitivity;
+
+  const maxRotationX = Math.PI / 2 - 0.1;
+  const minRotationX = -Math.PI / 2 + 0.1;
+  camera.rotation.x = Math.max(minRotationX, Math.min(maxRotationX, newRotationX));
+
+  prevMouseX = mouseX;
+  prevMouseY = mouseY;
+
     for (const animation of animations) {
         animation();
     }
