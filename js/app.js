@@ -64,8 +64,7 @@ const init = () => {
     camera.position.z = cameraPositionZ;
     camera.lookAt(0, 0, 0);
     //Begin ambient light
-    //addLight(0,0,0,0,0,0,200,200,50);
-    //makeLight("ambient",0,0,0,0,0,0,0);
+    makeLight("ambient",0,0,0,0,0,0,0);
     makeBorders();
     // *** Render
     render();
@@ -324,42 +323,6 @@ function addModel(x, y, z,obj,rx,ry,rz) {
     );
 }
 
-/*function addModel(obj, px, py, pz, rx, ry, rz){
-    const textureLoader = new THREE.TextureLoader();
-    //const objLoader = new THREE.OBJLoader();
-    let texture;
-    if(obj.value === 'astronaut' || obj.value === 'cat'){
-        texture = textureLoader.load('/modelos/' + obj.value + '.png');
-    }
-    else{
-        texture = textureLoader.load('/modelos/' + obj.value + '.jpg');
-    }
-
-    objLoader.load('/modelos/' + obj.value + '.obj', function (object) {
-            object.traverse(function (child) {
-                if (child instanceof THREE.Mesh) {
-                    child.material.map = texture;
-                }
-            });
-            objectArray.push(object);
-            object.position.set(px, py, pz);
-            const animateObj = () => {
-                object.rotation.x += (rx*0.01);
-                object.rotation.y += (ry*0.01);
-                object.rotation.z += (rz*0.01);
-            };
-            scene.add(object);
-            animations.push(animateObj);
-        },
-        // onProgress callback
-        function (xhr) {
-            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        },
-        // onError callback
-        function (error) {
-            console.error('An error happened', error);
-        });
-}*/
 
 document.getElementById("manipulate").onclick = function (){
     manipulate=!manipulate;
