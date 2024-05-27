@@ -1,57 +1,34 @@
+import * as THREE from 'three';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { TextureLoader } from 'three';
+
+
 // On loading the page, run the init function
 window.onload = () => init();
 
 // Global variables
 const angle = 0.02; // rotation in radians
 const colorObject = 0x3f51b5; // color
+const objLoader = new OBJLoader();
 let canvas, currentObject, renderer, scene, camera;
-const cameraPositionZ = 4; // camera's Z position
+const cameraPositionZ = 5; // camera's Z position
 let currentScale = 1; // current scale
 let scaleFactor = 0.1; // scale increase/decrease factor
 let minScale = 0.3; // minimum size
 let maxScale = 2.5; // maximum size
 let mouseX, mouseY; // mouse position
+const colorLight = 0xffff00; // light color
+const lightIntensity = 10; // light intensity
+let light;
+let animations=[];
+let objectArray=[];
+let objectId=0;
+let manipulate= false;
+const keys={};
 
-// Sets listeners for the object selector
-document.getElementById("object_selector").onchange = function () {
-    let object = document.getElementById("object_selector").value;
-    scene.remove(currentObject);
-    switch (object) {
-        case 'cube':
-            makeCube();
-            break;
-        case 'cone':
-            makeCone();
-            break;
-        case 'cylinder':
-            makeCylinder();
-            break;
-        case 'sphere':
-            makeSphere();
-            break;
-    }
-};
+window.addEventListener('keydown', handleKeyDown);
+window.addEventListener('keyup', handleKeyUp);
 
-// Sets listeners for the mouse position
-document.getElementById("gl-canvas").onmousemove = function (event) {
-    mouseX = (event.x / canvas.width) * cameraPositionZ - cameraPositionZ / 2;
-    mouseY = -(event.y / canvas.height) * cameraPositionZ + cameraPositionZ / 2;
-}
-
-// Sets listeners for the mouse wheel
-document.getElementById("gl-canvas").onwheel = function (event) {
-    if (event.deltaY > 0) {
-        currentScale += scaleFactor;
-        if (currentScale > maxScale) {
-            currentScale = maxScale;
-        }
-    } else {
-        currentScale -= scaleFactor;
-        if (currentScale < minScale) {
-            currentScale = minScale;
-        }
-    }
-}
 
 /**
  * Initializes the WebGL application
@@ -70,101 +47,366 @@ const init = () => {
     // Scene defines properties like the background, and defines the objects to be rendered
     scene = new THREE.Scene();
 
-    // *** Computes the cube
-    makeCube();
-
     // *** Create a camera
     const fov = 75; // field of view
     const near = 0.1;
-    const far = 5;
+    const far = 200;
     // Anything before or after this range will be clipped
     const aspect = canvas.width / canvas.height;
     camera = new THREE.PerspectiveCamera(fov, aspect, near, far); // mimics the way the human eye sees
     camera.position.z = cameraPositionZ;
-
+    camera.lookAt(0, 0, 0);
+    //Begin ambient light
+    //addLight(0,0,0,0,0,0,200,200,50);
+    makeLight("ambient");
+    makeBorders();
     // *** Render
     render();
+    animate();
+}
 
+function makeBorders (){
+    const floorMaterial = new THREE.MeshBasicMaterial({ color: 0xC0C0C0});  //Silver color
+    const backMaterial = new THREE.MeshBasicMaterial({ color: 0x787878});
+    const leftMaterial = new THREE.MeshBasicMaterial({ color: 0x646464});
+    const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000 }); // Black border
+
+    let planeLeft = createPlane(edgeMaterial, leftMaterial, 20, 20);
+    planeLeft.rotateY(1.57);
+    planeLeft.position.set(-10, 0, -10);
+    scene.add(planeLeft);
+
+    let planeBack = createPlane(edgeMaterial, backMaterial, 20, 20);
+    planeBack.position.set(0, 0, -20);
+    scene.add(planeBack);
+
+    let planeDown = createPlane(edgeMaterial, floorMaterial, 20, 20);
+    planeDown.rotateX(-1.57);
+    planeDown.rotateZ(-1.57);
+    planeDown.position.set(0, -10, -10);
+    scene.add(planeDown);
+
+    function createPlane(edgeMaterial, material, height, width) {
+        let planeGeometry = new THREE.PlaneGeometry(width, height);
+        let planeMesh = new THREE.Mesh(planeGeometry, material);
+
+        let edgesGeometry = new THREE.EdgesGeometry(planeGeometry);
+        let border = new THREE.LineSegments(edgesGeometry, edgeMaterial);
+
+        planeMesh.add(border);
+
+        return planeMesh;
+    }
 }
 
 /**
  * Draws a cube with different colors on each face.
  */
-const makeCube = () => {
-    const boxWidth = 1;
-    const boxHeight = 1;
-    const boxDepth = 1;
-    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth); // vertex data
-    const materials = [
-        new THREE.MeshBasicMaterial({color: 0xff0000}), // red
-        new THREE.MeshBasicMaterial({color: 0x00ff00}), // green
-        new THREE.MeshBasicMaterial({color: 0x0000ff}), // blue
-        new THREE.MeshBasicMaterial({color: 0xffff00}), // yellow
-        new THREE.MeshBasicMaterial({color: 0x00ffff}), // cyan
-        new THREE.MeshBasicMaterial({color: 0xff00ff})  // magenta
-    ];
-    const cube = new THREE.Mesh(geometry, materials); // mesh objects represent drawing a specific Geometry with a specific Material
+const makeCube = (h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz) => {
+    const geometry = new THREE.BoxGeometry(w, h, d); // vertex data
+    const material = new THREE.MeshBasicMaterial({color: color});
+    const cube = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
     currentObject = cube;
+    /*cube.rotation.x = 1;
+    cube.rotation.y = 1;
+    cube.rotation.z = 1;*/
+    objectArray.push(cube);
+    cube.position.set(px,py,pz);
+    const animateCube = () => {
+        cube.rotation.x += (rx*0.01);
+        cube.rotation.y += (ry*0.01);
+        cube.rotation.z += (rz*0.01);
+    };
     scene.add(cube);
+    animations.push(animateCube);
+    if (colorType==='texture'){
+        addTexture(cube,texture);
+    }
 }
 
+const makePyramid = (h,w,colorType,color,texture,px,py,pz,rx,ry,rz) => {
+    console.log(h);
+    console.log(w);
+    const pyramidSegments = 4; // A pyramid with a square base
 
-/**
- * Draws a cone with different characteristics.
- */
-const makeCone = () => {
-    const coneRadius = 1;
-    const coneHeight = 2;
-    const coneRadialSegments = 20;
-    const geometry = new THREE.ConeGeometry(coneRadius, coneHeight, coneRadialSegments); // vertex data
-    const material = new THREE.MeshBasicMaterial({color: colorObject}); // represent the surface properties. Note: the basic material is *not* affected by lights
-    const cone = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
-    currentObject = cone
-    scene.add(cone);
+    // CylinderGeometry with top radius 0 to create a pyramid shape
+    const geometry = new THREE.CylinderGeometry(0, w, h, pyramidSegments);
+    const material = new THREE.MeshBasicMaterial({color: color}); // represent the surface properties. Note: the basic material is *not* affected by lights
+    const pyramid = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
+    currentObject = pyramid;
+    objectArray.push(pyramid);
+    pyramid.position.set(px,py,pz);
+    const animatePyramid = () => {
+        pyramid.rotation.x += (rx*0.01);
+        pyramid.rotation.y += (ry*0.01);
+        pyramid.rotation.z += (rz*0.01);
+    };
+    scene.add(pyramid);
+    animations.push(animatePyramid);
+    if (colorType==='texture'){
+        addTexture(pyramid,texture);
+    }
 }
 
-/**
- * Draws a cylinder with different characteristics.
- */
-const makeCylinder = () => {
-    const cylinderRadiusTop = 1;
-    const cylinderRadiusBottom = 1;
-    const cylinderHeight = 2;
-    const cylinderRadialSegments = 20;
-    const geometry = new THREE.CylinderGeometry(cylinderRadiusTop, cylinderRadiusBottom, cylinderHeight, cylinderRadialSegments); // vertex data
-    const material = new THREE.MeshBasicMaterial({color: colorObject}); // represent the surface properties. Note: the basic material is *not* affected by lights
-    const cylinder = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
-    currentObject = cylinder
-    scene.add(cylinder);
+const addTexture = (cube,path) => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(path, (texture) => {
+        cube.material.map = texture;
+        cube.material.color.set(0xffffff);
+        cube.material.needsUpdate = true; // Atualiza o material
+    });
 }
 
-/**
- * Draws a sphere with different characteristics.
- */
-const makeSphere = () => {
-    const sphereRadius = 1;
-    const geometry = new THREE.SphereGeometry(sphereRadius); // vertex data
-    const material = new THREE.MeshBasicMaterial({color: colorObject}); // represent the surface properties. Note: the basic material is *not* affected by lights
-    const sphere = new THREE.Mesh(geometry, material); // mesh objects represent drawing a specific Geometry with a specific Material
-    currentObject = sphere
-    scene.add(sphere);
+document.getElementById("add_light").onclick = function (){
+    scene.remove(light);
+
+    let px= document.getElementById("light_x_position");
+    let py= document.getElementById("light_y_position");
+    let pz= document.getElementById("light_z_position");
+
+    let dx= document.getElementById("light_x_dir");
+    let dy= document.getElementById("light_y_dir");
+    let dz= document.getElementById("light_z_dir");
+
+    let color = document.getElementById("light-color");
+
+    makeLight("directional",px,py,pz,dx,dy,dz,color.value);
+    /*if (px !== null && py !== null && pz !== null &&
+        dx !== null && dy !== null && dz !== null &&
+        r !== null && g !== null && b !== null) {
+        console.log("luz")
+        addLight(px, py, pz, dx, dy, dz, r, b, g);
+    } else {
+        console.error("One or more elements are null.");
+        //TODO:adicionar erro a dizer que um valor é null
+    }*/
+    
+}
+
+const makeLight = (lightType,px,py,pz,dx,dy,dz,color) => {
+    switch (lightType) {
+        case "ambient": // light that shoots light in all directions
+            light = new THREE.AmbientLight(colorLight, lightIntensity);
+            break;
+        case "directional": // often used to represent the sun, and will shine in the direction of its target
+            light = new THREE.DirectionalLight(color, lightIntensity);
+            light.position.set(px, py, pz);
+            light.target.position.set(dx, dy, dz);
+            scene.add(light.target);
+            break;
+        default:
+            return -1;
+    }
+    scene.add(light);
+}
+
+function addLight(px,py,pz,dx,dy,dz,r,b,g){
+    var color = new THREE.Color(r / 255, g / 255, b / 255).getHex();
+
+    light=new THREE.AmbientLight(color,2);
+}
+
+document.getElementById("add_primitive").onclick = function (){
+    let type = document.getElementById("object_selector");
+    let h = document.getElementById("primitive_height");
+    let w = document.getElementById("primitive_width");
+    let d = document.getElementById("primitive_depth");
+
+    let px = document.getElementById("primitive_pos_x");
+    let py = document.getElementById("primitive_pos_y");
+    let pz = document.getElementById("primitive_pos_z");
+
+    let rx = document.getElementById("primitive_rot_x");
+    let ry = document.getElementById("primitive_rot_y");
+    let rz = document.getElementById("primitive_rot_z");
+
+    let colorType = document.getElementById("filling-selector");
+    let color = document.getElementById("primitive-color");
+    let textureInput = document.getElementById("primitive-texture");
+    let id = document.getElementById("primitive-id");
+    console.log(colorType.value);
+    let textureName= textureInput.name+".png";
+
+    id.textContent= objectId;
+    let selectElement = document.getElementById("manipulate-objects");
+    let newOption = document.createElement("option");
+    newOption.value= objectId;
+    newOption.text= objectId;
+    selectElement.add(newOption);
+
+    objectId+=1;
+    console.log(document.getElementById("primitive-color"));
+    if (type != null && h != null && w != null && d != null) {
+        createObject(type.value, h.value, w.value, d.value, colorType.value,color.value,textureName,px.value,py.value,pz.value,rx.value,ry.value,rz.value);
+    } else {
+        console.error("One or more elements are null.");
+        //TODO:erro em html de valor nulo
+    }
+    console.log(objectArray);
+}
+
+function createObject(type,h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz){
+    switch (type) {
+        case 'cube':
+            makeCube(h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz);
+            break;
+        case 'pyramid':
+            makePyramid(h,w,colorType,color,texture,px,py,pz,rx,ry,rz);
+            break;
+    }
+}
+document.getElementById("add-model").onclick = function () {
+    let px = document.getElementById("primitive_pos_x");
+    let py = document.getElementById("primitive_pos_y");
+    let pz = document.getElementById("primitive_pos_z");
+
+    let rx = document.getElementById("primitive_rot_x");
+    let ry = document.getElementById("primitive_rot_y");
+    let rz = document.getElementById("primitive_rot_z");
+
+    let obj = document.getElementById("model-file");
+    console.log(obj);
+    console.log(obj.value);
+    addModel(obj,px,py,pz,rx,ry,rz);
+}
+
+function addModel(obj, px, py, pz, rx, ry, rz){
+    const textureLoader = new THREE.TextureLoader();
+    const objLoader = new THREE.OBJLoader();
+    let texture;
+    if(obj.value === 'astronaut' || obj.value === 'cat'){
+        texture = textureLoader.load('/modelos/' + obj.value + '.png');
+    }
+    else{
+        texture = textureLoader.load('/modelos/' + obj.value + '.jpg');
+    }
+
+    objLoader.load('modelos/' + obj.value + '.obj', function (object) {
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = texture;
+                }
+            });
+            objectArray.push(object);
+            object.position.set(px, py, pz);
+            const animateObj = () => {
+                object.rotation.x += (rx*0.01);
+                object.rotation.y += (ry*0.01);
+                object.rotation.z += (rz*0.01);
+            };
+            scene.add(object);
+            animations.push(animateObj);
+        },
+        // onProgress callback
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        // onError callback
+        function (error) {
+            console.error('An error happened', error);
+        });
+}
+
+document.getElementById("manipulate").onclick = function (){
+    manipulate=!manipulate;
+}
+
+function verifyManipulate(){
+    let showManipulate= document.getElementById("manipulate-variable");
+    showManipulate.innerHTML = "manipulate: "+manipulate;
+    if(manipulate==true){
+        let width = document.getElementById("primitive_width");
+        let height = document.getElementById("primitive_height");
+        let depth = document.getElementById("primitive_depth");
+        let option = document.getElementById("manipulate-objects");
+        let optionSelected= option.value;
+        let texture = document.getElementById("primitive-texture");
+        let textureName= texture.name+".png";
+
+        if (keys['KeyL']){
+            let options = option.options;
+            scene.remove(objectArray[optionSelected]);
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === optionSelected) {
+                    option.remove(i);
+                    break;
+                }
+            }
+            delete objectArray[optionSelected];
+            manipulate=!manipulate;
+        }
+        if(keys['ArrowRight']){
+            objectArray[optionSelected].position.x+=0.05;
+        }
+        if(keys['ArrowLeft']){
+            objectArray[optionSelected].position.x-=0.05;
+        }
+        if(keys['ArrowUp']){
+            objectArray[optionSelected].position.z+=0.05;
+        }
+        if(keys['ArrowDown']){
+            objectArray[optionSelected].position.z-=0.05;
+        }
+        if(keys['PageUp']){
+            objectArray[optionSelected].position.y+=0.05;
+        }
+        if(keys['PageDown']){
+            objectArray[optionSelected].position.y-=0.05;
+        }
+        if(keys['KeyT']){
+            //let texture = document.getElementById("primitive-texture");
+            //let textureName= texture.name+".png";
+            addTexture(objectArray[optionSelected],textureName);
+        }
+        //TODO:Add verification to avoid negative numbers and huge objects
+        if(keys['KeyI']){
+            if(keys['KeyH']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x+0.05,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyJ']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x, objectArray[optionSelected].scale.y+0.05,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyK']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z+0.05);
+            }
+        }
+        if(keys['KeyO']){
+            if(keys['KeyH']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x-0.05,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyJ']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x, objectArray[optionSelected].scale.y-0.05,objectArray[optionSelected].scale.z);
+            }
+            if(keys['KeyK']){
+                objectArray[optionSelected].scale.set(objectArray[optionSelected].scale.x,objectArray[optionSelected].scale.y,objectArray[optionSelected].scale.z-0.05);
+            }
+        }
+    }
+}
+function handleKeyDown(event) {
+    keys[event.code] = true;
+}
+
+function handleKeyUp(event) {
+    keys[event.code] = false;
 }
 
 /**
  * The render loop.
  */
 const render = () => {
-    // Apply translation
-    currentObject.position.set(mouseX, mouseY);
-    // Apply rotation
-    currentObject.rotation.x += angle;
-    currentObject.rotation.y += angle;
-    // Apply scaling
-    currentObject.scale.set(currentScale, currentScale, currentScale);
+    verifyManipulate();
     // Draw the scene
+
     renderer.render(scene, camera);
     // Make the new frame
     requestAnimationFrame(render);
 }
 
-
+function animate(){
+    requestAnimationFrame(animate);
+    for (const animation of animations) {
+        animation();
+    }
+    renderer.render(scene, camera);
+}

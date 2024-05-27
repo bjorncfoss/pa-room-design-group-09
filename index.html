@@ -1,21 +1,124 @@
 <html lang="pt">
 <head>
    <title>PA Room Design</title>
-   <link rel="stylesheet" href="css/style.css">
+
+   <!-- Add Styles -->
+   <link rel="stylesheet" href="styles/styles.css">
 </head>
 <body>
 <canvas height="800" id="gl-canvas" width="800">
    Sorry, but your browser does not support HTML5's canvas element.
 </canvas>
 <br>
-<label for="object_selector">Select object:</label>
-<select id="object_selector">
-   <option value="cube">Cube</option>
-   <option value="cone">Cone</option>
-   <option value="cylinder">Cylinder</option>
-   <option value="sphere">Sphere</option>
-</select>
-<script src="js/three.js"></script>
-<script src="js/app.js"></script>
+<div class="container">
+   <div class="form-group">
+      <label for="object_selector">Select object:</label>
+      <select id="object_selector">
+         <option value="cube">Cube</option>
+         <option value="pyramid">Pyramid</option>
+      </select>
+      <div class="primitive-sizes-form">
+         <div class="form-input">
+            <label for="primitive_height">Height</label>
+            <input type="number" id="primitive_height" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_width">Width</label>
+            <input type="number" id="primitive_width" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_depth">Depth</label>
+            <input type="number" id="primitive_depth" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_pos_x">X</label>
+            <input type="number" id="primitive_pos_x" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_pos_y">Y</label>
+            <input type="number" id="primitive_pos_y" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_pos_z">Z</label>
+            <input type="number" id="primitive_pos_z" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_rot_x">Rx</label>
+            <input type="number" id="primitive_rot_x" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_rot_y">Ry</label>
+            <input type="number" id="primitive_rot_y" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="primitive_rot_z">Rz</label>
+            <input type="number" id="primitive_rot_z" class="form-control">
+         </div>
+      </div>
+      <div class="primitive-filling-form">
+         <select id="filling-selector">
+            <option value="color">Color</option>
+            <option value="texture">Texture</option>
+         </select>
+         <br>
+         <label for="primitive-color">Color:</label>
+         <input type="color" id="primitive-color" name="primitive_color" value="#ff0000"><br><br>
+         <input type="file" id="primitive-texture" name="texture" accept="image/png" />
+      </div>
+      <button id="add_primitive" class="btn btn-success">Add Primitive</button>
+      <label id="primitive-id"></label>
+   </div>
+   <div class="form-group">
+      <div class="form-input">
+         <label for="model-file">Select a file:</label>
+         <input type="file" id="model-file" name="myfile" accept=".obj"><br><br>
+         <button id="add-model" class="btn btn-success">Add Model</button>
+      </div>
+      <div class="form-input">
+         <select id="manipulate-objects"></select>
+         <button id="manipulate">Manipulate Object</button>
+         <div id="manipulate-variable" ></div>
+      </div>
+   </div>
+   <div class="form-input">
+      <div class="light-form">
+         <label>Position</label>
+         <div class="form-input">
+            <label for="light_x_position">X</label>
+            <input type="number" id="light_x_position" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="light_y_position">Y</label>
+            <input type="number" id="light_y_position" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="light_z_position">Z</label>
+            <input type="number" id="light_z_position" class="form-control">
+         </div>
+      </div>
+      <div class="light-form">
+         <label>Dir</label>
+         <div class="form-input">
+            <label for="light_x_dir">X</label>
+            <input type="number" id="light_x_dir" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="light_y_position">Y</label>
+            <input type="number" id="light_y_dir" class="form-control">
+         </div>
+         <div class="form-input">
+            <label for="light_z_position">Z</label>
+            <input type="number" id="light_z_dir" class="form-control">
+         </div>
+      </div>
+      <div class="light-form">
+         <label for="light-color">Color:</label>
+         <input type="color" id="light-color" name="light_color" value="#ff0000"><br><br>
+      </div>
+      <button id="add_light" class="btn btn-success">Add Light</button>
+   </div>
+</div>
+<!-- <script src="js/three.js"></script> -->
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
