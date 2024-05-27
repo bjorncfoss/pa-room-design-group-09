@@ -1,9 +1,15 @@
+import * as THREE from 'three';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { TextureLoader } from 'three';
+
+
 // On loading the page, run the init function
 window.onload = () => init();
 
 // Global variables
 const angle = 0.02; // rotation in radians
 const colorObject = 0x3f51b5; // color
+const objLoader = new OBJLoader();
 let canvas, currentObject, renderer, scene, camera;
 const cameraPositionZ = 5; // camera's Z position
 let currentScale = 1; // current scale
@@ -11,6 +17,8 @@ let scaleFactor = 0.1; // scale increase/decrease factor
 let minScale = 0.3; // minimum size
 let maxScale = 2.5; // maximum size
 let mouseX, mouseY; // mouse position
+const colorLight = 0xffff00; // light color
+const lightIntensity = 10; // light intensity
 let light;
 let animations=[];
 let objectArray=[];
@@ -49,8 +57,8 @@ const init = () => {
     camera.position.z = cameraPositionZ;
     camera.lookAt(0, 0, 0);
     //Begin ambient light
-    addLight(0,0,0,0,0,0,200,200,50);
-
+    //addLight(0,0,0,0,0,0,200,200,50);
+    makeLight("ambient");
     makeBorders();
     // *** Render
     render();
@@ -160,11 +168,10 @@ document.getElementById("add_light").onclick = function (){
     let dy= document.getElementById("light_y_dir");
     let dz= document.getElementById("light_z_dir");
 
-    let r= document.getElementById("light_r");
-    let g= document.getElementById("light_g");
-    let b= document.getElementById("light_b");
+    let color = document.getElementById("light-color");
 
-    if (px !== null && py !== null && pz !== null &&
+    makeLight("directional",px,py,pz,dx,dy,dz,color.value);
+    /*if (px !== null && py !== null && pz !== null &&
         dx !== null && dy !== null && dz !== null &&
         r !== null && g !== null && b !== null) {
         console.log("luz")
@@ -172,7 +179,25 @@ document.getElementById("add_light").onclick = function (){
     } else {
         console.error("One or more elements are null.");
         //TODO:adicionar erro a dizer que um valor é null
+    }*/
+    
+}
+
+const makeLight = (lightType,px,py,pz,dx,dy,dz,color) => {
+    switch (lightType) {
+        case "ambient": // light that shoots light in all directions
+            light = new THREE.AmbientLight(colorLight, lightIntensity);
+            break;
+        case "directional": // often used to represent the sun, and will shine in the direction of its target
+            light = new THREE.DirectionalLight(color, lightIntensity);
+            light.position.set(px, py, pz);
+            light.target.position.set(dx, dy, dz);
+            scene.add(light.target);
+            break;
+        default:
+            return -1;
     }
+    scene.add(light);
 }
 
 function addLight(px,py,pz,dx,dy,dz,r,b,g){
@@ -220,17 +245,84 @@ document.getElementById("add_primitive").onclick = function (){
     console.log(objectArray);
 }
 
+function createObject(type,h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz){
+    switch (type) {
+        case 'cube':
+            makeCube(h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz);
+            break;
+        case 'pyramid':
+            makePyramid(h,w,colorType,color,texture,px,py,pz,rx,ry,rz);
+            break;
+    }
+}
+document.getElementById("add-model").onclick = function () {
+    let px = document.getElementById("primitive_pos_x");
+    let py = document.getElementById("primitive_pos_y");
+    let pz = document.getElementById("primitive_pos_z");
+
+    let rx = document.getElementById("primitive_rot_x");
+    let ry = document.getElementById("primitive_rot_y");
+    let rz = document.getElementById("primitive_rot_z");
+
+    let obj = document.getElementById("model-file");
+    console.log(obj);
+    console.log(obj.value);
+    addModel(obj,px,py,pz,rx,ry,rz);
+}
+
+function addModel(obj, px, py, pz, rx, ry, rz){
+    const textureLoader = new THREE.TextureLoader();
+    const objLoader = new THREE.OBJLoader();
+    let texture;
+    if(obj.value === 'astronaut' || obj.value === 'cat'){
+        texture = textureLoader.load('/modelos/' + obj.value + '.png');
+    }
+    else{
+        texture = textureLoader.load('/modelos/' + obj.value + '.jpg');
+    }
+
+    objLoader.load('modelos/' + obj.value + '.obj', function (object) {
+            object.traverse(function (child) {
+                if (child instanceof THREE.Mesh) {
+                    child.material.map = texture;
+                }
+            });
+            objectArray.push(object);
+            object.position.set(px, py, pz);
+            const animateObj = () => {
+                object.rotation.x += (rx*0.01);
+                object.rotation.y += (ry*0.01);
+                object.rotation.z += (rz*0.01);
+            };
+            scene.add(object);
+            animations.push(animateObj);
+        },
+        // onProgress callback
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        // onError callback
+        function (error) {
+            console.error('An error happened', error);
+        });
+}
+
 document.getElementById("manipulate").onclick = function (){
     manipulate=!manipulate;
 }
 
 function verifyManipulate(){
+    let showManipulate= document.getElementById("manipulate-variable");
+    showManipulate.innerHTML = "manipulate: "+manipulate;
     if(manipulate==true){
         let width = document.getElementById("primitive_width");
         let height = document.getElementById("primitive_height");
         let depth = document.getElementById("primitive_depth");
         let option = document.getElementById("manipulate-objects");
         let optionSelected= option.value;
+        let texture = document.getElementById("primitive-texture");
+        let textureName= texture.name+".png";
+
         if (keys['KeyL']){
             let options = option.options;
             scene.remove(objectArray[optionSelected]);
@@ -262,7 +354,9 @@ function verifyManipulate(){
             objectArray[optionSelected].position.y-=0.05;
         }
         if(keys['KeyT']){
-            addTexture(objectArray[optionSelected]);
+            //let texture = document.getElementById("primitive-texture");
+            //let textureName= texture.name+".png";
+            addTexture(objectArray[optionSelected],textureName);
         }
         //TODO:Add verification to avoid negative numbers and huge objects
         if(keys['KeyI']){
@@ -293,20 +387,8 @@ function handleKeyDown(event) {
     keys[event.code] = true;
 }
 
-
 function handleKeyUp(event) {
     keys[event.code] = false;
-}
-
-function createObject(type,h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz){
-    switch (type) {
-        case 'cube':
-            makeCube(h,w,d,colorType,color,texture,px,py,pz,rx,ry,rz);
-            break;
-        case 'pyramid':
-            makePyramid(h,w,colorType,color,texture,px,py,pz,rx,ry,rz);
-            break;
-    }
 }
 
 /**
